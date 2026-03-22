@@ -9,13 +9,14 @@ import { stellarRoutes } from './routes/stellar.js';
 import { AppError } from './utils/errors.js';
 
 const app = Fastify({
-  logger: process.env.NODE_ENV === 'production' ? true : {
+  // Use pino-pretty only in development, otherwise use default JSON logger
+  logger: process.env.NODE_ENV === 'development' ? {
     level: 'info',
     transport: {
       target: 'pino-pretty',
       options: { colorize: true },
     },
-  },
+  } : true,
 });
 
 // --- Plugins ---
@@ -73,16 +74,20 @@ app.get('/health', async () => ({
 
 // Platform account balance from Horizon (public, no auth needed)
 app.get('/account/balance', async () => {
-  const { Keypair } = await import('@stellar/stellar-sdk');
-  const address = Keypair.fromSecret(config.platformSecretKey).publicKey();
   try {
+    const { Keypair } = await import('@stellar/stellar-sdk');
+    if (!config.platformSecretKey) {
+      return { xlm: '0', address: 'Billetera no configurada', error: 'Missing PLATFORM_SECRET_KEY' };
+    }
+    const address = Keypair.fromSecret(config.platformSecretKey).publicKey();
     const res = await fetch(`https://horizon-testnet.stellar.org/accounts/${address}`);
     if (!res.ok) return { xlm: '0', address };
     const data = await res.json() as { balances: { asset_type: string; balance: string }[] };
     const xlm = data.balances.find((b) => b.asset_type === 'native')?.balance ?? '0';
     return { xlm, address };
-  } catch {
-    return { xlm: '0', address };
+  } catch (err: any) {
+    console.error('[Stellar] Balance error:', err.message);
+    return { xlm: '0', address: 'Error de conexión', error: err.message };
   }
 });
 

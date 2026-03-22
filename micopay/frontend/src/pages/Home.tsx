@@ -56,12 +56,12 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, token }: HomeProps) => {
           <span className="material-symbols-outlined text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors cursor-pointer">
             notifications
           </span>
-          <div className="w-10 h-10 rounded-full border-2 border-primary-container overflow-hidden">
-            <img
-              alt="User Profile"
-              className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuB67y-i20YKZ74EdUyBhPSynmndCKS-h3EA_TY5I4DqJOMVotSw1KNKnJkRorXphGGSC2O37IzK3Ne0ucqSrLTuM5yBABSXmcqkmRAyds2slhc0jFDuu8bya9fX1W0jjxuPpCDkellmiwXSghk0lbLSUG_ZS_wCQ2m2oeltlvvyv4kQarhZZ8l-AC3gUy-wtgF301WK7zIlo5utKmx_I6CTuAQ_zqkXyiN6Di4UFiRzq5ASwVi017MoYgq_LhBYMO_AEIf4ZAHp1Dh"
-            />
+          <div className="w-10 h-10 rounded-full border-2 border-primary-container bg-surface-container-low flex items-center justify-center">
+            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="7" cy="7" r="3" stroke="#1A2830" strokeWidth="2"/>
+              <circle cx="17" cy="17" r="3" stroke="#1D9E75" strokeWidth="2"/>
+              <path d="M10 10L14 14" stroke="#00694C" strokeLinecap="round" strokeWidth="2"/>
+            </svg>
           </div>
         </div>
       </header>
