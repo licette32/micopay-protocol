@@ -4,6 +4,9 @@
 
 ![Home Screen](file:///C:/Users/eric/.gemini/antigravity/brain/eccb3bf5-8e77-4c92-8e00-dc1b58078d91/home_screen_full_1774183739022.png)
 
+> [!NOTE]
+> **Presentación del Proyecto**: [Empowering Everyone through Digital Money](https://gamma.app/docs/Empowering-everyone-through-digital-money-51bfqke37x9sjst?mode=doc)
+
 ## 🌟 Visión del Proyecto
 En mercados emergentes, la "última milla" de las criptomonedas es el efectivo. Micopay elimina la dependencia de bancos tradicionales mediante el uso de **Contratos Escrow (HTLC)** autogestionados, garantizando que el usuario siempre tenga el control de sus fondos.
 
