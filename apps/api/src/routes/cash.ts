@@ -1,6 +1,66 @@
 import type { FastifyInstance } from "fastify";
 import { requirePayment } from "../middleware/x402.js";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes, createHash } from "crypto";
+import * as StellarSdk from "@stellar/stellar-sdk";
+
+const RPC_URL  = process.env.STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org";
+const NET      = StellarSdk.Networks.TESTNET;
+const ESCROW_CONTRACT_ID = process.env.ESCROW_CONTRACT_ID!;
+const PLATFORM_SECRET    = process.env.PLATFORM_SECRET_KEY!;
+const USDC_ISSUER        = process.env.USDC_ISSUER ?? "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+
+async function lockEscrow(
+  amountUsdc: number,
+  secretHash: string,
+  timeoutMinutes: number,
+): Promise<string> {
+  // Demo: agent is the seller (has USDC), platform is the buyer/merchant recipient
+  // In production: the real user wallet signs the lock tx
+  const sellerSecret = process.env.DEMO_AGENT_SECRET_KEY ?? PLATFORM_SECRET;
+  const sellerKP     = StellarSdk.Keypair.fromSecret(sellerSecret);
+  const buyerAddress = StellarSdk.Keypair.fromSecret(PLATFORM_SECRET).publicKey();
+
+  const rpc      = new StellarSdk.rpc.Server(RPC_URL);
+  const account  = await rpc.getAccount(sellerKP.publicKey());
+  const contract = new StellarSdk.Contract(ESCROW_CONTRACT_ID);
+
+  const amountStroops = BigInt(Math.round(amountUsdc * 10_000_000));
+  const platformFee   = BigInt(0); // zero fee for demo simplicity
+
+  const args = [
+    StellarSdk.Address.fromString(sellerKP.publicKey()).toScVal(), // seller: demo agent
+    StellarSdk.Address.fromString(buyerAddress).toScVal(),         // buyer: platform (has USDC trustline)
+    StellarSdk.nativeToScVal(amountStroops, { type: "i128" }),
+    StellarSdk.nativeToScVal(platformFee, { type: "i128" }),
+    StellarSdk.xdr.ScVal.scvBytes(Buffer.from(secretHash, "hex")),
+    StellarSdk.nativeToScVal(timeoutMinutes, { type: "u32" }),
+  ];
+
+  let tx = new StellarSdk.TransactionBuilder(account, { fee: "1000000", networkPassphrase: NET })
+    .addOperation(contract.call("lock", ...args))
+    .setTimeout(180)
+    .build();
+
+  const sim = await rpc.simulateTransaction(tx);
+  if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+    throw new Error(`Escrow simulation failed: ${sim.error}`);
+  }
+
+  tx = StellarSdk.rpc.assembleTransaction(tx, sim).build();
+  tx.sign(sellerKP);
+
+  const result = await rpc.sendTransaction(tx);
+  if (result.status === "ERROR") throw new Error(`Escrow send failed: ${JSON.stringify(result.errorResult)}`);
+
+  // Poll for confirmation
+  for (let i = 0; i < 20; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    const status = await rpc.getTransaction(result.hash);
+    if (status.status === "SUCCESS") return result.hash;
+    if (status.status === "FAILED") throw new Error(`Escrow tx failed: ${result.hash}`);
+  }
+  throw new Error(`Escrow timeout: ${result.hash}`);
+}
 
 // ── Mock merchant network (replaces live P2P backend connection - roadmap) ──
 const MERCHANTS = [
@@ -214,22 +274,36 @@ export async function cashRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       const rate = await getUsdcMxnRate();
-      const amountUsdc = (amountMxn / rate).toFixed(4);
+      const amountUsdc = parseFloat((amountMxn / rate).toFixed(4));
 
-      // Simulate HTLC lock (roadmap: real Soroban MicopayEscrow call)
-      const requestId = `mcr-${randomUUID().slice(0, 8)}`;
-      const secretHash = `htlc_${Buffer.from(requestId).toString("hex").slice(0, 48)}`;
-      const htlcTxHash = `demo_htlc_${Date.now()}_${requestId}`;
-      const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); // 2h
+      // Generate HTLC secret — the QR payload IS the secret preimage
+      const requestId  = `mcr-${randomUUID().slice(0, 8)}`;
+      const secretBytes = randomBytes(32);
+      const secret      = secretBytes.toString("hex");
+      const secretHash  = createHash("sha256").update(secretBytes).digest("hex");
+      const expiresAt   = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
 
-      const qrPayload = `micopay://claim?request_id=${requestId}&merchant=${merchantAddress.slice(0, 12)}&amount_mxn=${amountMxn}&secret_hash=${secretHash.slice(0, 16)}`;
+      // Lock real USDC in MicopayEscrow on Soroban testnet
+      // Cap demo lock at 1 USDC to preserve agent balance across multiple demos
+      const lockAmount = Math.min(amountUsdc, 1.0);
+      let htlcTxHash: string;
+      try {
+        htlcTxHash = await lockEscrow(lockAmount, secretHash, 120);
+        fastify.log.info(`Escrow locked on-chain: ${htlcTxHash}`);
+      } catch (err) {
+        fastify.log.error(`Escrow failed, falling back to demo mode: ${err}`);
+        htlcTxHash = `demo_htlc_${Date.now()}_${requestId}`;
+      }
+
+      // QR payload contains the secret preimage — merchant reveals it to release USDC
+      const qrPayload = `micopay://claim?request_id=${requestId}&secret=${secret}&amount_mxn=${amountMxn}&contract=${ESCROW_CONTRACT_ID}`;
 
       const cashRequest = {
         request_id: requestId,
         merchant_address: merchantAddress,
         merchant_name: merchant.name,
         amount_mxn: amountMxn,
-        amount_usdc: amountUsdc,
+        amount_usdc: amountUsdc.toFixed(4),
         htlc_secret_hash: secretHash,
         htlc_tx_hash: htlcTxHash,
         status: "pending" as const,
@@ -256,7 +330,7 @@ export async function cashRoutes(fastify: FastifyInstance): Promise<void> {
         },
         exchange: {
           amount_mxn: amountMxn,
-          amount_usdc: amountUsdc,
+          amount_usdc: amountUsdc.toFixed(4),
           rate_usdc_mxn: rate,
           htlc_tx_hash: htlcTxHash,
           htlc_explorer_url: `https://stellar.expert/explorer/testnet/tx/${htlcTxHash}`,
