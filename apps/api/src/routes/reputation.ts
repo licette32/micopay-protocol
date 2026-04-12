@@ -133,7 +133,12 @@ export async function reputationRoutes(fastify: FastifyInstance): Promise<void> 
           total_volume_usdc: data.volume_usdc,
           on_chain_since: data.on_chain_since,
           nft_soulbound: data.nft_token_id
-            ? { token_id: data.nft_token_id, transferable: false, note: "Reputation is non-transferable — earned, not bought." }
+            ? {
+                token_id: data.nft_token_id,
+                transferable: false,
+                status: "planned",
+                note: "Token ID reserved for a non-transferable Soroban badge contract (not yet deployed). Reputation is derived from MicoPay P2P trade history.",
+              }
             : null,
         },
         agent_signal: {
@@ -143,7 +148,7 @@ export async function reputationRoutes(fastify: FastifyInstance): Promise<void> 
             ? data.completion_rate >= 0.95 ? "low" : "medium"
             : "high",
         },
-        data_source: "MicoPay P2P network + Stellar on-chain records",
+        data_source: "MicoPay P2P trade history (testnet demo data)",
         queried_at: new Date().toISOString(),
       });
     }

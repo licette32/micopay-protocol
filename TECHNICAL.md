@@ -30,18 +30,18 @@ Every tx hash returned by `POST /api/v1/demo/run` is verifiable at
 
 ### Merchant reputation
 - **What**: Static `KNOWN_MERCHANTS` record in `apps/api/src/routes/reputation.ts`. Unknown addresses get pseudo-random data derived from the address string.
-- **Why**: Production would query on-chain trade history + NFT soulbound contract. The response schema and agent_signal logic are production-ready.
-- **NFT soulbound**: The token IDs in the response are identifiers for a planned non-transferable badge contract — not yet deployed.
+- **Why**: Production would query MicoPay P2P trade history + a Soroban soulbound badge contract. The response schema, tier logic, and `agent_signal` are production-ready.
+- **NFT soulbound**: Token IDs in the response carry `status: "planned"` — they are identifiers reserved for a non-transferable Soroban badge contract that is not yet deployed. The response is explicit about this.
 
 ### Agent Bazaar intents
 - **What**: In-memory `Map` — intents are lost on server restart
 - **Why**: The intent schema, x402 pricing, and HTLC handshake flow are production-ready. Persistence (PostgreSQL / Stellar contract storage) is the next step.
 
 ### x402 payment verification
-- **What**: Middleware parses XDR and validates payment destination + amount. Does **not** submit the transaction on-chain.
-- **Implication**: The same signed XDR could technically be replayed. In the live demo this doesn't happen because `demo.ts` submits each tx to Horizon before calling the API.
-- **Production fix**: Submit the XDR in the middleware and store the tx hash to prevent replay. Intentionally deferred to keep demo latency low.
-- **Mock mode**: `x-payment: mock:ADDRESS:AMOUNT` bypasses verification entirely — used only by the browser UI to avoid wallet signing on the frontend demo.
+- **What**: Middleware parses XDR, validates payment destination + amount, and stores the tx hash in an in-memory Set to prevent replay within the server session.
+- **Replay protection**: implemented — the same signed XDR will be rejected on a second request with `"Payment already used"`.
+- **Limitation**: the Set does not persist across server restarts. Production hardening: submit the XDR on-chain and store tx hashes in a persistent store (Redis / DB) with TTL matching the Stellar transaction timeout.
+- **Mock mode**: `x-payment: mock:ADDRESS:AMOUNT` bypasses verification — used only by the browser UI to avoid wallet signing on the frontend demo.
 
 ### CETES / Blend / Etherfuse
 - **What**: Full UI screens (`CETESScreen.tsx`, `BlendScreen.tsx`) with a backend that returns simulated transactions on testnet (`mock_cetes_buy_...`, `mock_blend_supply_...`)

@@ -87,16 +87,25 @@ export function requirePayment(config: X402Config) {
 }
 
 /**
+ * In-memory replay protection: tracks tx hashes seen this session.
+ * Prevents the same signed XDR from being reused across multiple requests.
+ * Does not survive server restart — production would use a persistent store
+ * (Redis / DB) with TTL matching the Stellar transaction timeout (~5 min).
+ */
+const usedTxHashes = new Set<string>();
+
+/**
  * Verify a payment submitted as signed XDR in the X-PAYMENT header.
  *
  * Returns the payer's Stellar address if valid.
  *
- * For the hackathon, we use a mock verification that checks:
+ * Checks:
  * - The XDR parses as a valid Stellar transaction
  * - The transaction has at least one payment operation to PLATFORM_ADDRESS
  * - The amount meets the minimum
+ * - The transaction hash has not been seen before (replay protection)
  *
- * In production, we'd also submit the tx on-chain and wait for confirmation.
+ * Production hardening: submit the tx on-chain and await confirmation.
  */
 async function verifyPayment(xdrBase64: string, minAmountUsdc: string): Promise<string> {
   // Mock mode: accept any payment header that starts with "mock:"
@@ -107,6 +116,12 @@ async function verifyPayment(xdrBase64: string, minAmountUsdc: string): Promise<
   try {
     const tx = new Transaction(xdrBase64, NETWORK_PASSPHRASE);
     const payer = tx.source;
+
+    // Replay protection — reject if this tx was already accepted
+    const txHash = Buffer.from(tx.hash()).toString("hex");
+    if (usedTxHashes.has(txHash)) {
+      throw new Error(`Payment already used: ${txHash.slice(0, 16)}...`);
+    }
 
     // Check operations for a payment to our address
     let foundPayment = false;
@@ -131,9 +146,15 @@ async function verifyPayment(xdrBase64: string, minAmountUsdc: string): Promise<
       );
     }
 
+    // Mark tx as used — prevents replay for the lifetime of this server process
+    usedTxHashes.add(txHash);
+
     return payer;
   } catch (err) {
-    if (err instanceof Error && err.message.includes("No valid USDC")) throw err;
+    if (err instanceof Error && (
+      err.message.includes("No valid USDC") ||
+      err.message.includes("Payment already used")
+    )) throw err;
     throw new Error(`Invalid payment XDR: ${err}`);
   }
 }

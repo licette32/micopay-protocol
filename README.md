@@ -353,7 +353,7 @@ Contracts reviewed against the Soroban security checklist:
 - ✅ State machine prevents double-spend / double-release
 - ✅ Events emitted for all state changes (full auditability)
 - ✅ `opt-level = "z"`, `lto = true`, `panic = "abort"` in release profile
-- ✅ x402: USDC issuer verified, mock mode only in testnet demo
+- ✅ x402: USDC issuer verified, tx hash replay protection (in-memory Set), mock mode only in testnet browser UI
 
 ---
 
