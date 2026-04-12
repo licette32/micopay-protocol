@@ -10,7 +10,7 @@
 
 MicoPay is two things that work together:
 
-**1. A mobile P2P app** — already live on Stellar testnet. Users cashout USDC to MXN cash through local merchants (pharmacies, tiendas). The app also includes UI screens for CETES bonds (Etherfuse), Blend DeFi (borrow/yield), and bank on-ramp — mainnet-ready architecture, simulated on testnet. No bank account required.
+**1. A mobile P2P app** — already live on Stellar testnet. Think Uber for crypto cashout: anyone with MXN cash (a neighbor, a street vendor, a tienda) can become a liquidity provider. Users with USDC get matched to the nearest available person and walk away with pesos in minutes. The app also includes UI screens for CETES bonds (Etherfuse), Blend DeFi, and bank on-ramp — mainnet-ready architecture, simulated on testnet. No bank account required.
 
 **2. An x402 Protocol API** — built for this hackathon. Exposes the merchant network and HTLC engine to any AI agent via HTTP + micropayments. Claude, GPT, a Telegram bot, or a WhatsApp assistant can now do what MicoPay users do — in a single API call.
 
@@ -49,9 +49,11 @@ Total cost to agent: $0.1215 USDC
 
 Over 60% of Mexico's population is unbanked or underbanked. Cash is king. Traditional crypto on-ramps require bank accounts, KYC, and days of waiting.
 
-MicoPay solves this with a **verified P2P merchant network**: local shops (pharmacies, convenience stores) that hold MXN cash and accept USDC. The HTLC contract ensures neither party can cheat — the merchant only gets USDC after handing over cash, and the user gets a full refund if they don't show up.
+MicoPay is **the Uber of crypto cashout**: anyone with MXN cash can become a liquidity provider — your neighbor, the taquero on the corner, a pharmacy, a tienda. They register, set their rate, and wait for requests. On the other side, users with USDC get matched to the nearest available person and walk away with pesos in minutes.
 
-**AI agents are the perfect interface for this**: they can find the best merchant, verify trust signals a human would ignore, and handle the entire flow without the user touching crypto at all.
+The HTLC contract is what makes it trustless: the cash provider only receives USDC *after* handing over cash, and the user always gets a full refund if no one shows up. No escrow service, no bank, no intermediary — just two people and a smart contract.
+
+**AI agents are the perfect interface for this**: they find the best match, verify reputation signals a human would ignore, and handle the entire flow without the user touching crypto at all.
 
 ---
 
@@ -60,11 +62,13 @@ MicoPay solves this with a **verified P2P merchant network**: local shops (pharm
 The mobile app (`micopay/frontend`, port 5181) is the user-facing side of the same protocol. It shares the same Soroban contracts and merchant network as the agent API.
 
 ### Cash In / Cash Out (P2P)
-- User selects amount → map shows nearby merchants sorted by tier and availability
-- Merchant is notified → chat opens between user and merchant
+Anyone with MXN cash can join as a liquidity provider — neighbors, street vendors, small shops, anyone. They set their rate and availability; the app matches them with nearby users.
+
+- User selects amount → map shows nearby providers sorted by distance, tier, and availability
+- Provider is notified → chat opens for coordination
 - USDC is locked on-chain via `MicopayEscrow` HTLC
-- User walks to merchant → shows QR → receives cash → USDC released
-- Merchant never gets USDC without giving cash. User always gets refunded if they don't show.
+- User walks to provider → shows QR → receives cash → USDC released
+- Provider never gets USDC without giving cash. User always gets a full refund if no one shows.
 
 ### 📊 CETES Tokenizados (via Etherfuse)
 - Invest in Mexican government bonds tokenized on Stellar
