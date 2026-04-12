@@ -38,13 +38,33 @@ export default function App() {
             </p>
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.25rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.4rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <a
+              href="https://gamma.app/docs/Empowering-everyone-through-digital-money-51bfqke37x9sjst?mode=doc"
+              target="_blank" rel="noopener noreferrer"
+              style={{
+                fontSize: "0.72rem", color: "#a78bfa", textDecoration: "none",
+                border: "1px solid #7c3aed", borderRadius: "5px", padding: "0.25rem 0.6rem",
+              }}
+            >
+              📊 Presentación
+            </a>
+            <a
+              href="http://localhost:5181"
+              target="_blank" rel="noopener noreferrer"
+              style={{
+                fontSize: "0.72rem", color: "#4ade80", textDecoration: "none",
+                border: "1px solid #16a34a", borderRadius: "5px", padding: "0.25rem 0.6rem",
+              }}
+            >
+              📱 App MicoPay
+            </a>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.72rem" }}>
             <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
             <span style={{ color: "#4ade80" }}>testnet live</span>
-          </div>
-          <div style={{ fontSize: "0.65rem", color: "#4b5563" }}>
-            Sin cuenta · Sin API key · El pago ES la autenticación
+            <span style={{ color: "#4b5563" }}>· Sin cuenta · Sin API key</span>
           </div>
         </div>
       </header>
