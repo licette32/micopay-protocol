@@ -1,0 +1,22 @@
+# MicoPay Team Docs
+
+This folder contains the working documents for the next phase of MicoPay.
+
+If the team needs one place to start, read these in order:
+
+1. `PRODUCT_SCOPE.md`
+2. `RETAIL_ROADMAP.md`
+3. `UX_MANIFESTO.md`
+4. `DRIPS_TEAM_GUIDE.md`
+
+Document purpose:
+
+- `PRODUCT_SCOPE.md`: defines what MicoPay is building now, what is out of scope, and what success looks like.
+- `RETAIL_ROADMAP.md`: turns the product direction into a phased execution plan.
+- `UX_MANIFESTO.md`: gives product, design, and engineering a shared UX and psychology framework.
+- `DRIPS_TEAM_GUIDE.md`: explains how the team should prepare the repo, create issues, review PRs, and operate during a Drips Wave.
+
+Why these docs exist:
+
+- Vision documents explain why MicoPay matters.
+- These docs explain what to build next, how to work together, and how to win in Drips without losing focus.

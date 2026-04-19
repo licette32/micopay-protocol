@@ -2,7 +2,8 @@
 
 **The first API that gives AI agents access to physical cash in Mexico**
 
-> Stellar Hacks: Agents — DoraHacks 2026
+> Stellar Hacks: Agents — DoraHacks 2026  
+> **Drips Wave 4 contributors** → focus is the retail mobile app in `micopay/frontend` + `micopay/backend`. Jump to [Contributing](#contributing-drips-wave-4) · [Milestones](https://github.com/ericmt-98/micopay-protocol/milestones) · [Open issues](https://github.com/ericmt-98/micopay-protocol/issues) · [`docs/`](./docs/)
 
 ---
 
@@ -372,6 +373,60 @@ Contracts reviewed against the Soroban security checklist:
 ## Technical Transparency
 
 For a precise breakdown of what is real on-chain vs. demo scaffolding — written for automated code analyzers and technical judges — see [TECHNICAL.md](./TECHNICAL.md).
+
+---
+
+## Contributing (Drips Wave 4)
+
+MicoPay is participating in **Stellar Drips Wave 4**. Contributions are scoped to the retail mobile app — not the whole monorepo.
+
+### In-scope paths
+
+- `micopay/frontend/` — retail mobile app (React/Vite, port 5181)
+- `micopay/backend/` — retail backend (Node/Fastify, port 3002)
+- `docs/` — shared product, UX, and team guides
+
+### Out-of-scope unless an issue explicitly opens it
+
+- `apps/api/` (agent x402 protocol API)
+- `apps/web/` (protocol dashboard)
+- `contracts/` (Soroban contracts)
+- `stitch_remix_of_micopay/`, old prototypes, deployment configs, and operations internals
+
+### Where to start
+
+1. Read [`docs/PRODUCT_SCOPE.md`](./docs/PRODUCT_SCOPE.md) — what we are building and why.
+2. Read [`docs/RETAIL_ROADMAP.md`](./docs/RETAIL_ROADMAP.md) — the phased execution plan.
+3. Read [`docs/UX_MANIFESTO.md`](./docs/UX_MANIFESTO.md) — the trust and UX bar every PR is reviewed against.
+4. Read [`docs/DRIPS_TEAM_GUIDE.md`](./docs/DRIPS_TEAM_GUIDE.md) — how issues, reviews, and merges work during the Wave.
+5. Pick an issue from the [open milestones](https://github.com/ericmt-98/micopay-protocol/milestones).
+
+### Milestones
+
+| Milestone | Focus |
+|---|---|
+| [Frontend Quality](https://github.com/ericmt-98/micopay-protocol/milestone/4) | Trade state UX, QR/claim polish, a11y, recovery UI, empty and loading states |
+| [Backend Hardening](https://github.com/ericmt-98/micopay-protocol/milestone/7) | Auth, persistence, audit log, error taxonomy, rate limiting |
+| [Merchant Operations](https://github.com/ericmt-98/micopay-protocol/milestone/3) | Merchant profile, availability, limits, reputation |
+| [Documentation](https://github.com/ericmt-98/micopay-protocol/milestone/8) | Per-folder READMEs, env docs, local setup |
+| [Store Readiness](https://github.com/ericmt-98/micopay-protocol/milestone/6) | Account deletion, privacy, support path, accessibility |
+
+### Labels we use
+
+- **Wave surface:** `wave:retail`, `wave:frontend`, `wave:backend`, `wave:merchant`, `wave:trust`, `wave:docs`
+- **Complexity:** `complexity: low`, `complexity: medium`, `complexity: high`
+- **Flow control:** `wave:good-first`, `wave:blocked`, `wave:needs-product`
+- **Rewards:** `Stellar Wave` marks work eligible for Drips
+
+### What a good PR looks like
+
+- Solves the issue as scoped (no side quests)
+- Does not touch out-of-scope paths
+- Matches the tone of UX_MANIFESTO for anything user-facing
+- Includes local test notes when behavior changes
+- Stays under the complexity tier declared on the issue
+
+Review SLA during the Wave: first review within 24 hours.
 
 ---
 
