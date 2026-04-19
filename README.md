@@ -380,6 +380,10 @@ For a precise breakdown of what is real on-chain vs. demo scaffolding — writte
 
 MicoPay is participating in **Stellar Drips Wave 4**. Contributions are scoped to the retail mobile app — not the whole monorepo.
 
+### Current Wave focus
+
+One flow over many demos. The Wave is organized around making **Core Retail Flow** — trade creation, state, cancel, timeout, refund, receipt — work reliably end to end. Every other milestone (Backend Hardening, Merchant Operations, Frontend Quality, Store Readiness, Documentation) exists to make that flow trustworthy. If you are unsure where to start, pick an issue from **Core Retail Flow** first.
+
 ### In-scope paths
 
 - `micopay/frontend/` — retail mobile app (React/Vite, port 5181)
@@ -405,11 +409,12 @@ MicoPay is participating in **Stellar Drips Wave 4**. Contributions are scoped t
 
 | Milestone | Focus |
 |---|---|
-| [Frontend Quality](https://github.com/ericmt-98/micopay-protocol/milestone/4) | Trade state UX, QR/claim polish, a11y, recovery UI, empty and loading states |
-| [Backend Hardening](https://github.com/ericmt-98/micopay-protocol/milestone/7) | Auth, persistence, audit log, error taxonomy, rate limiting |
-| [Merchant Operations](https://github.com/ericmt-98/micopay-protocol/milestone/3) | Merchant profile, availability, limits, reputation |
+| [Core Retail Flow](https://github.com/ericmt-98/micopay-protocol/milestone/2) | **Wave priority.** Trade creation, detail view, state machine UX, cancel / timeout / refund, receipts, history linked to real states |
+| [Backend Hardening](https://github.com/ericmt-98/micopay-protocol/milestone/7) | Auth persistence, audit log, error taxonomy, rate limiting, replay protection, structured logging |
+| [Merchant Operations](https://github.com/ericmt-98/micopay-protocol/milestone/3) | Merchant onboarding, profile, availability, limits, trade inbox |
+| [Frontend Quality](https://github.com/ericmt-98/micopay-protocol/milestone/4) | Empty states, a11y pass, loading skeletons — polish outside the core flow |
+| [Store Readiness](https://github.com/ericmt-98/micopay-protocol/milestone/6) | Account deletion, privacy, support path, reviewer mode, store compliance |
 | [Documentation](https://github.com/ericmt-98/micopay-protocol/milestone/8) | Per-folder READMEs, env docs, local setup |
-| [Store Readiness](https://github.com/ericmt-98/micopay-protocol/milestone/6) | Account deletion, privacy, support path, accessibility |
 
 ### Labels we use
 

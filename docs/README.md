@@ -2,6 +2,14 @@
 
 This folder contains the working documents for the next phase of MicoPay.
 
+## Current Wave focus
+
+The team's priority for Drips Wave 4 is **Core Retail Flow** — making one complete cash-in / cash-out flow trustworthy end to end, not broadening into new integrations. Every other milestone exists to reinforce that flow.
+
+See [open milestones](https://github.com/ericmt-98/micopay-protocol/milestones) for the live backlog.
+
+## Reading order
+
 If the team needs one place to start, read these in order:
 
 1. `PRODUCT_SCOPE.md`
