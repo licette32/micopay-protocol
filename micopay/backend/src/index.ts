@@ -45,27 +45,34 @@ try {
 // --- Global error handler ---
 app.setErrorHandler((error, request, reply) => {
   if (error instanceof AppError) {
-    reply.status(error.statusCode).send({
-      error: error.name,
-      message: error.message,
+    if (error.httpStatus >= 500) {
+      request.log.error({ err: error }, `[${error.code}] ${error.devMessage}`);
+    } else {
+      request.log.info({ err: error }, `[${error.code}] ${error.devMessage}`);
+    }
+    
+    reply.status(error.httpStatus).send({
+      code: error.code,
+      message: error.userMessage,
     });
     return;
   }
 
   // Fastify validation errors
   if (error.validation) {
+    request.log.warn({ err: error }, `Validation Error: ${error.message}`);
     reply.status(400).send({
-      error: 'ValidationError',
-      message: error.message,
+      code: 'VALIDATION_ERROR',
+      message: 'Por favor, verifica los datos ingresados.',
     });
     return;
   }
 
   // Unknown errors
-  request.log.error(error);
+  request.log.error({ err: error }, 'Unhandled Error');
   reply.status(500).send({
-    error: 'InternalServerError',
-    message: 'Something went wrong',
+    code: 'INTERNAL_ERROR',
+    message: 'Ocurrió un error inesperado. Por favor, intenta más tarde.',
   });
 });
 

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import db from '../db/schema.js';
 import { config } from '../config.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
-import { ConflictError } from '../utils/errors.js';
+import { ValidationError } from '../utils/errors.js';
 
 export async function userRoutes(app: FastifyInstance) {
   /**
@@ -35,7 +35,12 @@ export async function userRoutes(app: FastifyInstance) {
       [stellar_address, username],
     );
     if (existing) {
-      throw new ConflictError('User with this address or username already exists');
+      throw new ValidationError(
+        'USER_ALREADY_EXISTS',
+        'Ya existe un usuario con esa dirección o nombre de usuario.',
+        'User with this address or username already exists',
+        409
+      );
     }
 
     // Create user

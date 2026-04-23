@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { config } from '../config.js';
+import { UpstreamError, ValidationError } from '../utils/errors.js';
 
 const CETES_APY = 11.45;
 const HORIZON_TESTNET = 'https://horizon-testnet.stellar.org';
@@ -54,7 +55,11 @@ export async function defiRoutes(app: FastifyInstance) {
             : 'Live CETES tokenizados por Etherfuse',
       };
     } catch (err: any) {
-      return reply.status(500).send({ error: err.message });
+      throw new UpstreamError(
+        'DEFI_RATE_FETCH_FAILED',
+        'No se pudieron obtener las tasas de DeFi desde Horizon.',
+        err.message || 'Failed to fetch DeFi rates'
+      );
     }
   });
 
@@ -142,7 +147,11 @@ export async function defiRoutes(app: FastifyInstance) {
         explorerUrl: `https://stellar.expert/explorer/public/tx/${result.hash}`,
       };
     } catch (err: any) {
-      return reply.status(500).send({ error: err.message || 'Failed to buy CETES' });
+      throw new UpstreamError(
+        'CETES_BUY_FAILED',
+        'Error al procesar la compra de CETES en mainnet.',
+        err.message || 'Failed to buy CETES'
+      );
     }
   });
 
@@ -178,7 +187,12 @@ export async function defiRoutes(app: FastifyInstance) {
       };
     }
 
-    return reply.status(501).send({ error: 'Mainnet CETES sell not yet implemented' });
+    throw new ValidationError(
+      'NOT_IMPLEMENTED',
+      'La venta de CETES en mainnet aún no está disponible.',
+      'Mainnet CETES sell not yet implemented',
+      501
+    );
   });
 
   // ─── BLEND ───────────────────────────────────────────────────────────────

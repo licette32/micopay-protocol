@@ -1,44 +1,49 @@
 export class AppError extends Error {
   constructor(
-    public statusCode: number,
-    message: string,
+    public code: string,
+    public userMessage: string,
+    public devMessage: string,
+    public httpStatus: number,
   ) {
-    super(message);
-    this.name = 'AppError';
+    super(devMessage);
+    this.name = this.constructor.name;
+    // Capture stack trace
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class AuthError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 401) {
+    super(code, userMessage, devMessage, httpStatus);
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 400) {
+    super(code, userMessage, devMessage, httpStatus);
+  }
+}
+
+export class TradeStateError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 409) {
+    super(code, userMessage, devMessage, httpStatus);
   }
 }
 
 export class NotFoundError extends AppError {
-  constructor(message = 'Resource not found') {
-    super(404, message);
-    this.name = 'NotFoundError';
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 404) {
+    super(code, userMessage, devMessage, httpStatus);
   }
 }
 
-export class ForbiddenError extends AppError {
-  constructor(message = 'Forbidden') {
-    super(403, message);
-    this.name = 'ForbiddenError';
+export class RateLimitError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 429) {
+    super(code, userMessage, devMessage, httpStatus);
   }
 }
 
-export class ConflictError extends AppError {
-  constructor(message = 'Conflict') {
-    super(409, message);
-    this.name = 'ConflictError';
-  }
-}
-
-export class BadRequestError extends AppError {
-  constructor(message = 'Bad request') {
-    super(400, message);
-    this.name = 'BadRequestError';
-  }
-}
-
-export class UnauthorizedError extends AppError {
-  constructor(message = 'Unauthorized') {
-    super(401, message);
-    this.name = 'UnauthorizedError';
+export class UpstreamError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 502) {
+    super(code, userMessage, devMessage, httpStatus);
   }
 }

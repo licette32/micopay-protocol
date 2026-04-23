@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { UpstreamError } from '../utils/errors.js';
 
 const STROOPS_PER_MXN = 10_000_000n;
 const DEFAULT_TIMEOUT_MINUTES = 120;
@@ -63,7 +64,11 @@ export async function callLockOnChain(params: {
     prepared = await rpc.prepareTransaction(tx);
   } catch (err: any) {
     console.error('[Stellar] Simulation failed:', err.message);
-    throw new Error(`Simulation failed: ${err.message}. Check if contract is deployed and parameters are correct.`);
+    throw new UpstreamError(
+      'STELLAR_SIMULATION_FAILED',
+      'No se pudo simular la transacción en Stellar. El contrato podría no estar listo.',
+      `Simulation failed: ${err.message}. Check if contract is deployed and parameters are correct.`
+    );
   }
 
   prepared.sign(keypair);
@@ -71,7 +76,11 @@ export async function callLockOnChain(params: {
   const sendResult = await rpc.sendTransaction(prepared);
   if (sendResult.status === 'ERROR') {
     console.error('[Stellar] Send failed:', sendResult.errorResult);
-    throw new Error(`Send failed: ${JSON.stringify(sendResult.errorResult)}`);
+    throw new UpstreamError(
+      'STELLAR_SEND_FAILED',
+      'Error al enviar la transacción a la red Stellar.',
+      `Send failed: ${JSON.stringify(sendResult.errorResult)}`
+    );
   }
 
   const txHash = sendResult.hash;
@@ -88,7 +97,11 @@ export async function callLockOnChain(params: {
           console.log(`[Stellar] Lock confirmed: ${txHash}`);
           return { txHash };
         }
-        throw new Error(`Lock transaction failed on-chain: ${txHash}`);
+        throw new UpstreamError(
+          'STELLAR_TRANSACTION_FAILED',
+          'La transacción de bloqueo falló en la blockchain.',
+          `Lock transaction failed on-chain: ${txHash}`
+        );
       }
       // 404 = still pending
     } catch (err: any) {
@@ -97,7 +110,11 @@ export async function callLockOnChain(params: {
     }
   }
 
-  throw new Error(`Lock tx ${txHash} not confirmed within 30s`);
+  throw new UpstreamError(
+    'STELLAR_TIMEOUT',
+    'La transacción de bloqueo está tardando más de lo esperado.',
+    `Lock tx ${txHash} not confirmed within 30s`
+  );
 }
 
 /**
@@ -142,7 +159,11 @@ export async function callReleaseOnChain(params: {
     prepared = await rpc.prepareTransaction(tx);
   } catch (err: any) {
     console.error('[Stellar] Release simulation failed:', err.message);
-    throw new Error(`Release simulation failed: ${err.message}. Check if trade exists in contract.`);
+    throw new UpstreamError(
+      'STELLAR_RELEASE_SIMULATION_FAILED',
+      'No se pudo simular la liberación en Stellar.',
+      `Release simulation failed: ${err.message}. Check if trade exists in contract.`
+    );
   }
 
   prepared.sign(keypair);
@@ -150,7 +171,11 @@ export async function callReleaseOnChain(params: {
   const sendResult = await rpc.sendTransaction(prepared);
   if (sendResult.status === 'ERROR') {
     console.error('[Stellar] Release send failed:', sendResult.errorResult);
-    throw new Error(`Release send failed: ${JSON.stringify(sendResult.errorResult)}`);
+    throw new UpstreamError(
+      'STELLAR_RELEASE_SEND_FAILED',
+      'Error al enviar la liberación a la red Stellar.',
+      `Release send failed: ${JSON.stringify(sendResult.errorResult)}`
+    );
   }
 
   const txHash = sendResult.hash;
@@ -167,14 +192,22 @@ export async function callReleaseOnChain(params: {
           console.log(`[Stellar] Release confirmed: ${txHash}`);
           return { txHash };
         }
-        throw new Error(`Release transaction failed on-chain: ${txHash}`);
+        throw new UpstreamError(
+          'STELLAR_RELEASE_FAILED',
+          'La transacción de liberación falló en la blockchain.',
+          `Release transaction failed on-chain: ${txHash}`
+        );
       }
     } catch (err: any) {
       if (err.message.includes('failed on-chain')) throw err;
     }
   }
 
-  throw new Error(`Release tx ${txHash} not confirmed within 30s`);
+  throw new UpstreamError(
+    'STELLAR_RELEASE_TIMEOUT',
+    'La transacción de liberación está tardando más de lo esperado.',
+    `Release tx ${txHash} not confirmed within 30s`
+  );
 }
 
 /**
