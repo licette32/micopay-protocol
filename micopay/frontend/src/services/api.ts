@@ -84,10 +84,22 @@ export interface TradeHistoryItem {
   created_at: string;
   seller_id: string;
   buyer_id: string;
+  merchant_username: string;
+  direction: 'cash-in' | 'cash-out';
 }
 
-export async function getTradeHistory(token: string): Promise<TradeHistoryItem[]> {
-  const res = await http.get('/trades/history', authHeaders(token));
+export async function getTradeHistory(
+  token: string,
+  status?: string,
+  page = 1,
+  limit = 20
+): Promise<TradeHistoryItem[]> {
+  const params = new URLSearchParams();
+  if (status && status !== 'all') params.append('status', status);
+  params.append('page', page.toString());
+  params.append('limit', limit.toString());
+
+  const res = await http.get(`/trades/history?${params.toString()}`, authHeaders(token));
   return res.data.trades;
 }
 

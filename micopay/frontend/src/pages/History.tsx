@@ -1,0 +1,162 @@
+import { useState, useEffect } from 'react';
+import { getTradeHistory, TradeHistoryItem } from '../services/api';
+
+const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  completed: { label: 'Completado', color: 'text-[#1D9E75]', bg: 'bg-[#1D9E75]/10' },
+  locked:    { label: 'Bloqueado',  color: 'text-primary',   bg: 'bg-primary/10' },
+  revealing: { label: 'Revelando',  color: 'text-primary',   bg: 'bg-primary/10' },
+  pending:   { label: 'Pendiente',  color: 'text-outline',   bg: 'bg-outline/10' },
+  cancelled: { label: 'Cancelado',  color: 'text-error',     bg: 'bg-error/10' },
+  expired:   { label: 'Expirado',   color: 'text-outline',   bg: 'bg-outline/10' },
+};
+
+interface HistoryProps {
+  onBack: () => void;
+  onSelectTrade: (trade: TradeHistoryItem) => void;
+  token: string | null;
+}
+
+const FILTERS = [
+  { id: 'all', label: 'Todos' },
+  { id: 'completed', label: 'Completados' },
+  { id: 'cancelled', label: 'Cancelados' },
+  { id: 'expired', label: 'Expirados' },
+];
+
+const History = ({ onBack, onSelectTrade, token }: HistoryProps) => {
+  const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
+  const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!token) return;
+    setLoading(true);
+    getTradeHistory(token, status, page, 10)
+      .then(setTrades)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token, status, page]);
+
+  const handleFilterChange = (newStatus: string) => {
+    setStatus(newStatus);
+    setPage(1);
+  };
+
+  return (
+    <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col">
+      <header className="fixed top-0 left-0 w-full z-50 flex items-center px-4 py-4 bg-white/90 backdrop-blur-md border-b border-outline-variant/10">
+        <button onClick={onBack} className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+          <span className="material-symbols-outlined text-on-surface">arrow_back</span>
+        </button>
+        <h1 className="flex-1 text-center font-headline font-bold text-lg mr-10">Historial de Transacciones</h1>
+      </header>
+
+      <main className="flex-1 mt-20 px-6 pb-24">
+        {/* Status Filters */}
+        <section className="flex gap-2 overflow-x-auto pb-4 no-scrollbar mb-4">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => handleFilterChange(f.id)}
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                status === f.id
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-white border border-outline-variant/20 text-outline hover:border-primary/50'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </section>
+
+        {/* Trade List */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 opacity-50">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-sm font-medium">Cargando historial...</p>
+          </div>
+        ) : trades.length === 0 ? (
+          <div className="bg-white rounded-[24px] border border-outline-variant/10 shadow-sm p-12 text-center mt-10">
+            <div className="w-16 h-16 bg-surface-container-low rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-outline text-3xl">history_toggle_off</span>
+            </div>
+            <h3 className="font-headline font-bold text-on-surface mb-2">Sin transacciones</h3>
+            <p className="text-sm text-outline leading-relaxed max-w-[200px] mx-auto">
+              No encontramos transacciones que coincidan con tu filtro actual.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {trades.map((trade) => {
+              const s = STATUS_LABEL[trade.status] || STATUS_LABEL.pending;
+              const isCashIn = trade.direction === 'cash-in';
+              const date = new Date(trade.created_at).toLocaleDateString('es-MX', {
+                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+              });
+
+              return (
+                <div
+                  key={trade.id}
+                  onClick={() => onSelectTrade(trade)}
+                  className="bg-white rounded-[20px] p-4 border border-outline-variant/10 shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${isCashIn ? 'bg-[#1D9E75]/10' : 'bg-primary/10'}`}>
+                      <span className={`material-symbols-outlined ${isCashIn ? 'text-[#1D9E75]' : 'text-primary'}`}>
+                        {isCashIn ? 'south_west' : 'north_east'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-1">
+                        <p className="font-bold text-on-surface text-sm truncate">
+                          {trade.merchant_username}
+                        </p>
+                        <p className="font-black text-on-surface text-sm">
+                          ${trade.amount_mxn.toLocaleString('es-MX')} MXN
+                        </p>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <p className="text-[11px] text-outline font-medium uppercase tracking-wider">{date}</p>
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest ${s.color} ${s.bg}`}>
+                          {s.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && trades.length > 0 && (
+          <div className="flex items-center justify-between mt-8">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-outline-variant/20 text-sm font-bold disabled:opacity-30 disabled:pointer-events-none hover:bg-surface-container-low transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">chevron_left</span>
+              Anterior
+            </button>
+            <span className="text-xs font-bold text-outline">Página {page}</span>
+            <button
+              disabled={trades.length < 10}
+              onClick={() => setPage(p => p + 1)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-outline-variant/20 text-sm font-bold disabled:opacity-30 disabled:pointer-events-none hover:bg-surface-container-low transition-colors"
+            >
+              Siguiente
+              <span className="material-symbols-outlined text-sm">chevron_right</span>
+            </button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default History;

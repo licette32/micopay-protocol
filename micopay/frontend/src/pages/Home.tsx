@@ -16,10 +16,11 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 interface HomeProps {
   onNavigateCashout: () => void;
   onNavigateDeposit: () => void;
+  onNavigateHistory: () => void;
   token: string | null;
 }
 
-const Home = ({ onNavigateCashout, onNavigateDeposit, token }: HomeProps) => {
+const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }: HomeProps) => {
   const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
   const [xlmBalance, setXlmBalance] = useState<string | null>(null);
   const [stellarAddress, setStellarAddress] = useState<string>('');
@@ -143,7 +144,15 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, token }: HomeProps) => {
 
         {/* Actividad */}
         <section className="mb-8">
-          <h2 className="text-[11px] font-bold text-outline-variant uppercase tracking-[0.15em] mb-4">Actividad reciente</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[11px] font-bold text-outline-variant uppercase tracking-[0.15em]">Actividad reciente</h2>
+            <button
+              onClick={onNavigateHistory}
+              className="text-[11px] font-black text-primary uppercase tracking-[0.1em] hover:underline transition-all"
+            >
+              Ver todo
+            </button>
+          </div>
 
           {trades.length === 0 ? (
             <div className="bg-white rounded-[20px] border border-outline-variant/10 shadow-sm p-6 text-center">

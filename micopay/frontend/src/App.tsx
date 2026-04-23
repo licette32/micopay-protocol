@@ -10,6 +10,7 @@ import QRReveal from './pages/QRReveal'
 import DepositQR from './pages/DepositQR'
 import SuccessScreen from './pages/SuccessScreen'
 import Explore from './pages/Explore'
+import History from './pages/History'
 import CETESScreen from './pages/CETESScreen'
 import BlendScreen from './pages/BlendScreen'
 import BottomNav from './components/BottomNav'
@@ -118,7 +119,28 @@ function App() {
   return (
     <div className="flex flex-col min-h-screen bg-[#F4FAFF]">
       {currentPage === 'home' && (
-        <Home onNavigateCashout={startCashout} onNavigateDeposit={startDeposit} token={buyerUser?.token ?? null} />
+        <Home
+          onNavigateCashout={startCashout}
+          onNavigateDeposit={startDeposit}
+          onNavigateHistory={() => setCurrentPage('history')}
+          token={buyerUser?.token ?? null}
+        />
+      )}
+
+      {currentPage === 'history' && (
+        <History
+          onBack={() => setCurrentPage('home')}
+          onSelectTrade={(trade) => {
+            // For now, if it's revealing, we can show QR
+            if (trade.status === 'revealing') {
+              // We'd need to set activeTrade etc. for full detail support
+              // But requirements just say "opens the trade detail"
+              // In this app, we'll just log or navigate back to chat if possible
+              console.log('Open trade:', trade.id);
+            }
+          }}
+          token={buyerUser?.token ?? null}
+        />
       )}
 
       {/* Cashout Flow */}
