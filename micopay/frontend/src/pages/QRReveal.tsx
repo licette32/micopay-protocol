@@ -52,8 +52,8 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
             {/* Top Navigation */}
             <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 backdrop-blur-md bg-white/90 border-b border-outline-variant/20">
                 <div className="flex items-center gap-3">
-                    <button onClick={onBack} className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
-                        <span className="material-symbols-outlined text-primary">arrow_back</span>
+                    <button onClick={onBack} aria-label="Volver" className="p-2 hover:bg-surface-container-low rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary">
+                        <span aria-hidden="true" className="material-symbols-outlined text-primary">arrow_back</span>
                     </button>
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
@@ -62,16 +62,16 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                         </div>
                     </div>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary">more_vert</span>
-                </div>
+                <button aria-label="Más opciones" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary">
+                    <span aria-hidden="true" className="material-symbols-outlined text-primary">more_vert</span>
+                </button>
             </header>
 
             <main className="pt-24 pb-12 px-6 max-w-md mx-auto">
                 {/* Status Banner */}
                 <div className="mb-8">
                     <div className="inline-flex items-center gap-2 bg-primary-container/10 border border-primary-container/20 px-4 py-2 rounded-full">
-                        <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
                         <span className="text-primary font-semibold text-sm">
                             {secretLoaded ? '✓ Escrow on-chain · Fondos bloqueados' : '✓ Oferta aceptada · Saldo bloqueado'}
                         </span>
@@ -98,13 +98,14 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                         <div className="flex gap-3">
                             <button
                                 onClick={onChat}
-                                className="flex-1 py-2 px-4 rounded-lg border border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
+                                aria-label="Abrir chat con el agente"
+                                className="flex-1 py-2 px-4 rounded-lg border border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary"
                             >
-                                <span className="material-symbols-outlined text-sm">chat</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">chat</span>
                                 Abrir chat
                             </button>
-                            <button className="flex-1 py-2 px-4 rounded-lg border border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2">
-                                <span className="material-symbols-outlined text-sm">location_on</span>
+                            <button aria-label="Ver ubicación del agente" className="flex-1 py-2 px-4 rounded-lg border border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">location_on</span>
                                 Ubicación
                             </button>
                         </div>
@@ -142,9 +143,10 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                     {!isConfirming ? (
                         <button
                             onClick={completePurchase}
-                            className="w-full py-4 rounded-2xl bg-primary text-on-primary font-bold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                            aria-label="Confirmar recepción de efectivo"
+                            className="w-full py-4 rounded-2xl bg-primary text-on-primary font-bold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-primary"
                         >
-                            <span className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
+                            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
                             Ya recibí el efectivo
                         </button>
                     ) : (
