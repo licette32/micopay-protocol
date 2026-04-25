@@ -1,22 +1,75 @@
 import type { FastifyInstance } from "fastify";
 import {
-  Keypair, Asset, TransactionBuilder, Operation,
-  Networks, Horizon, Memo, BASE_FEE,
+  Keypair,
+  Asset,
+  TransactionBuilder,
+  Operation,
+  Networks,
+  Horizon,
+  Memo,
+  BASE_FEE,
 } from "@stellar/stellar-sdk";
+import { config } from "../config.js";
+import { DEMO_USER } from "../scripts/seed.js";
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const USDC_ISSUER = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const USDC = new Asset("USDC", USDC_ISSUER);
 const EXPLORER = "https://stellar.expert/explorer/testnet/tx";
-const DEMO_MERCHANT = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGKUJI5KOOJ9TXWNTBBS2JN";
+const DEMO_MERCHANT =
+  "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGKUJI5KOOJ9TXWNTBBS2JN";
 
 function getPlatformAddress(): string {
   const secret = process.env.PLATFORM_SECRET_KEY;
-  if (secret) { try { return Keypair.fromSecret(secret).publicKey(); } catch {} }
+  if (secret) {
+    try {
+      return Keypair.fromSecret(secret).publicKey();
+    } catch {}
+  }
   return "GDKKW2WSMQWZ63PIZBKDDBAAOBG5FP3TUHRYQ4U5RBKTFNESL5K5BJJK";
 }
 
-export async function demoRoutes(fastify: FastifyInstance): Promise<void> {
+export async function demoRoutes(
+  fastify: FastifyInstance & { jwt?: any },
+): Promise<void> {
+  /**
+   * GET /api/v1/demo/status
+   * Public endpoint — no auth required.
+   * Returns { demo_mode: boolean } reflecting config.demoMode.
+   */
+  fastify.get("/api/v1/demo/status", async (_request, reply) => {
+    return reply.send({ demo_mode: config.demoMode });
+  });
+
+  /**
+   * POST /auth/demo-login
+   * Issues a 24h JWT for the demo account when demoMode=true.
+   * Returns 404 when demoMode=false (requirement 3.2, 9.2).
+   */
+  fastify.post("/auth/demo-login", async (_request, reply) => {
+    if (!config.demoMode) {
+      return reply.status(404).send();
+    }
+
+    if (!fastify.jwt) {
+      return reply.status(503).send({ error: "JWT plugin not registered" });
+    }
+
+    const token = fastify.jwt.sign(
+      { id: DEMO_USER.id, stellar_address: DEMO_USER.stellar_address },
+      { expiresIn: "24h" },
+    );
+
+    return reply.send({
+      token,
+      user: {
+        id: DEMO_USER.id,
+        username: DEMO_USER.username,
+        stellar_address: DEMO_USER.stellar_address,
+      },
+    });
+  });
+
   /**
    * POST /api/v1/demo/run
    *
@@ -32,23 +85,31 @@ export async function demoRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post("/api/v1/demo/run", async (_request, reply) => {
     const secret = process.env.DEMO_AGENT_SECRET_KEY;
     if (!secret) {
-      return reply.status(503).send({ error: "Demo agent not configured. Run scripts/setup-demo-agent.mjs first." });
+      return reply.status(503).send({
+        error:
+          "Demo agent not configured. Run scripts/setup-demo-agent.mjs first.",
+      });
     }
 
-    const agentKP      = Keypair.fromSecret(secret);
+    const agentKP = Keypair.fromSecret(secret);
     const agentAddress = agentKP.publicKey();
     const platformAddr = getPlatformAddress();
-    const horizon      = new Horizon.Server(HORIZON_URL);
-    const port         = process.env.PORT ?? "3000";
-    const baseUrl      = `http://localhost:${port}`;
+    const horizon = new Horizon.Server(HORIZON_URL);
+    const port = process.env.PORT ?? "3000";
+    const baseUrl = `http://localhost:${port}`;
 
     const account = await horizon.loadAccount(agentAddress);
 
     function buildTx(amount: string, memo: string) {
       // TransactionBuilder.build() increments account.sequenceNumber internally —
       // do NOT call account.incrementSequenceNumber() manually here.
-      const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
-        .addOperation(Operation.payment({ destination: platformAddr, asset: USDC, amount }))
+      const tx = new TransactionBuilder(account, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .addOperation(
+          Operation.payment({ destination: platformAddr, asset: USDC, amount }),
+        )
         .addMemo(Memo.text(memo.slice(0, 28)))
         .setTimeout(180)
         .build();
@@ -72,17 +133,22 @@ export async function demoRoutes(fastify: FastifyInstance): Promise<void> {
       const r0 = await horizon.submitTransaction(tx0);
       const s0Res = await fetch(`${baseUrl}/api/v1/bazaar/intent`, {
         method: "POST",
-        headers: { "x-payment": tx0.toXDR(), "Content-Type": "application/json" },
+        headers: {
+          "x-payment": tx0.toXDR(),
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           offered: { chain: "ethereum", symbol: "ETH", amount: "1.2" },
           wanted: { chain: "stellar", symbol: "USDC", amount: "28.57" },
         }),
       });
-      const s0 = await s0Res.json() as any;
+      const s0 = (await s0Res.json()) as any;
       steps.push({
         name: "bazaar_broadcast",
-        description: "Agent broadcasts cross-chain intent: ETH → USDC. x402 payment prevents spam.",
-        price_usdc: "0.005", tx_hash: r0.hash,
+        description:
+          "Agent broadcasts cross-chain intent: ETH → USDC. x402 payment prevents spam.",
+        price_usdc: "0.005",
+        tx_hash: r0.hash,
         stellar_expert_url: `${EXPLORER}/${r0.hash}`,
         result: s0,
       });
@@ -96,14 +162,19 @@ export async function demoRoutes(fastify: FastifyInstance): Promise<void> {
         const rA = await horizon.submitTransaction(txA);
         const s0bRes = await fetch(`${baseUrl}/api/v1/bazaar/accept`, {
           method: "POST",
-          headers: { "x-payment": txA.toXDR(), "Content-Type": "application/json" },
+          headers: {
+            "x-payment": txA.toXDR(),
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ intent_id: intentId, amount_usdc: 28.57 }),
         });
-        const s0b = await s0bRes.json() as any;
+        const s0b = (await s0bRes.json()) as any;
         steps.push({
           name: "bazaar_accept",
-          description: "Stellar side anchored on-chain. USDC locked as cross-chain collateral via MicopayEscrow.",
-          price_usdc: "0.005", tx_hash: rA.hash,
+          description:
+            "Stellar side anchored on-chain. USDC locked as cross-chain collateral via MicopayEscrow.",
+          price_usdc: "0.005",
+          tx_hash: rA.hash,
           stellar_expert_url: `${EXPLORER}/${rA.hash}`,
           soroban_tx_hash: s0b?.handshake?.htlc_tx_hash,
           soroban_explorer_url: s0b?.handshake?.htlc_explorer_url,
@@ -115,24 +186,31 @@ export async function demoRoutes(fastify: FastifyInstance): Promise<void> {
       // Agent (now holding USDC from the cross-chain swap) finds the nearest
       // trusted merchant to deliver MXN cash to the user.
       const r1 = await horizon.submitTransaction(tx1);
-      const s1 = await fetch(`${baseUrl}/api/v1/cash/agents?lat=19.4195&lng=-99.1627&amount=500&limit=3`,
-        { headers: { "x-payment": tx1.toXDR() } });
+      const s1 = await fetch(
+        `${baseUrl}/api/v1/cash/agents?lat=19.4195&lng=-99.1627&amount=500&limit=3`,
+        { headers: { "x-payment": tx1.toXDR() } },
+      );
       steps.push({
         name: "cash_agents",
-        description: "Find cash merchants near Roma Norte, CDMX. Agent selects best option.",
-        price_usdc: "0.001", tx_hash: r1.hash,
+        description:
+          "Find cash merchants near Roma Norte, CDMX. Agent selects best option.",
+        price_usdc: "0.001",
+        tx_hash: r1.hash,
         stellar_expert_url: `${EXPLORER}/${r1.hash}`,
         result: await s1.json(),
       });
 
       // ── Step 2: Verify Merchant Reputation ───────────────────────────────────
       const r2 = await horizon.submitTransaction(tx2);
-      const s2 = await fetch(`${baseUrl}/api/v1/reputation/${DEMO_MERCHANT}`,
-        { headers: { "x-payment": tx2.toXDR() } });
+      const s2 = await fetch(`${baseUrl}/api/v1/reputation/${DEMO_MERCHANT}`, {
+        headers: { "x-payment": tx2.toXDR() },
+      });
       steps.push({
         name: "reputation",
-        description: "Verify Farmacia Guadalupe on-chain reputation. NFT soulbound badge. Can't be faked.",
-        price_usdc: "0.0005", tx_hash: r2.hash,
+        description:
+          "Verify Farmacia Guadalupe on-chain reputation. NFT soulbound badge. Can't be faked.",
+        price_usdc: "0.0005",
+        tx_hash: r2.hash,
         stellar_expert_url: `${EXPLORER}/${r2.hash}`,
         result: await s2.json(),
       });
@@ -143,13 +221,21 @@ export async function demoRoutes(fastify: FastifyInstance): Promise<void> {
       const r3 = await horizon.submitTransaction(tx3);
       const s3 = await fetch(`${baseUrl}/api/v1/cash/request`, {
         method: "POST",
-        headers: { "x-payment": tx3.toXDR(), "Content-Type": "application/json" },
-        body: JSON.stringify({ merchant_address: DEMO_MERCHANT, amount_mxn: 500 }),
+        headers: {
+          "x-payment": tx3.toXDR(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          merchant_address: DEMO_MERCHANT,
+          amount_mxn: 500,
+        }),
       });
       steps.push({
         name: "cash_request",
-        description: "Lock USDC in MicopayEscrow on Soroban → QR code for $500 MXN at Farmacia Guadalupe.",
-        price_usdc: "0.01", tx_hash: r3.hash,
+        description:
+          "Lock USDC in MicopayEscrow on Soroban → QR code for $500 MXN at Farmacia Guadalupe.",
+        price_usdc: "0.01",
+        tx_hash: r3.hash,
         stellar_expert_url: `${EXPLORER}/${r3.hash}`,
         result: await s3.json(),
       });
@@ -158,8 +244,10 @@ export async function demoRoutes(fastify: FastifyInstance): Promise<void> {
       const r4 = await horizon.submitTransaction(tx4);
       steps.push({
         name: "fund_micopay",
-        description: "Agent funds the protocol it just used. x402 is self-sustaining.",
-        price_usdc: "0.10", tx_hash: r4.hash,
+        description:
+          "Agent funds the protocol it just used. x402 is self-sustaining.",
+        price_usdc: "0.10",
+        tx_hash: r4.hash,
         stellar_expert_url: `${EXPLORER}/${r4.hash}`,
         result: { message: "x402 works — protocol funds itself" },
       });
@@ -170,13 +258,18 @@ export async function demoRoutes(fastify: FastifyInstance): Promise<void> {
         total_paid_usdc: "0.1215",
         user_received: "$500 MXN en efectivo físico",
         steps,
-        framing: "Cross-chain intent coordinated via Bazaar. Stellar side anchored on Soroban. AtomicSwapHTLC (built + 37 tests) resolves the counterpart chain in production.",
-        summary: "From cross-chain intent to physical cash in Mexico — trustless, no API keys, no bank.",
+        framing:
+          "Cross-chain intent coordinated via Bazaar. Stellar side anchored on Soroban. AtomicSwapHTLC (built + 37 tests) resolves the counterpart chain in production.",
+        summary:
+          "From cross-chain intent to physical cash in Mexico — trustless, no API keys, no bank.",
       });
-
     } catch (err) {
       fastify.log.error(err);
-      return reply.status(500).send({ error: "Demo failed", detail: String(err), steps_completed: steps });
+      return reply.status(500).send({
+        error: "Demo failed",
+        detail: String(err),
+        steps_completed: steps,
+      });
     }
   });
 }

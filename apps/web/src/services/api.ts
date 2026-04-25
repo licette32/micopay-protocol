@@ -1,6 +1,6 @@
-import axios from 'axios';
+import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 const http = axios.create({ baseURL: BASE_URL });
 
@@ -9,8 +9,8 @@ function authHeaders(token: string) {
 }
 
 function randomAddress(prefix: string): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let address = 'G' + prefix.toUpperCase().replace(/[^A-Z2-7]/g, 'A');
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let address = "G" + prefix.toUpperCase().replace(/[^A-Z2-7]/g, "A");
   while (address.length < 56) {
     address += chars[Math.floor(Math.random() * chars.length)];
   }
@@ -32,7 +32,7 @@ export interface TradeData {
 
 export async function registerUser(username: string): Promise<UserData> {
   const stellar_address = randomAddress(username.substring(0, 6));
-  const res = await http.post('/users/register', { username, stellar_address });
+  const res = await http.post("/users/register", { username, stellar_address });
   return { ...res.data.user, token: res.data.token };
 }
 
@@ -42,14 +42,17 @@ export async function createTrade(
   buyerToken: string,
 ): Promise<TradeData> {
   const res = await http.post(
-    '/trades',
+    "/trades",
     { seller_id: sellerId, amount_mxn: amountMxn },
     authHeaders(buyerToken),
   );
   return res.data.trade;
 }
 
-export async function lockTrade(tradeId: string, sellerToken: string): Promise<{ lock_tx_hash: string }> {
+export async function lockTrade(
+  tradeId: string,
+  sellerToken: string,
+): Promise<{ lock_tx_hash: string }> {
   const res = await http.post(
     `/trades/${tradeId}/lock`,
     {},
@@ -58,19 +61,32 @@ export async function lockTrade(tradeId: string, sellerToken: string): Promise<{
   return { lock_tx_hash: res.data.lock_tx_hash };
 }
 
-export async function revealTrade(tradeId: string, sellerToken: string): Promise<void> {
-  await http.post(`/trades/${tradeId}/reveal`, undefined, authHeaders(sellerToken));
+export async function revealTrade(
+  tradeId: string,
+  sellerToken: string,
+): Promise<void> {
+  await http.post(
+    `/trades/${tradeId}/reveal`,
+    undefined,
+    authHeaders(sellerToken),
+  );
 }
 
 export async function getSecret(
   tradeId: string,
   sellerToken: string,
 ): Promise<{ secret: string; qr_payload: string }> {
-  const res = await http.get(`/trades/${tradeId}/secret`, authHeaders(sellerToken));
+  const res = await http.get(
+    `/trades/${tradeId}/secret`,
+    authHeaders(sellerToken),
+  );
   return res.data;
 }
 
-export async function completeTrade(tradeId: string, buyerToken: string): Promise<void> {
+export async function completeTrade(
+  tradeId: string,
+  buyerToken: string,
+): Promise<void> {
   await http.post(`/trades/${tradeId}/complete`, {}, authHeaders(buyerToken));
 }
 
@@ -86,12 +102,22 @@ export interface TradeHistoryItem {
   buyer_id: string;
 }
 
-export async function getTradeHistory(token: string): Promise<TradeHistoryItem[]> {
-  const res = await http.get('/trades/history', authHeaders(token));
+export async function getTradeHistory(
+  token: string,
+): Promise<TradeHistoryItem[]> {
+  const res = await http.get("/trades/history", authHeaders(token));
   return res.data.trades;
 }
 
-export async function getAccountBalance(): Promise<{ xlm: string; address: string }> {
-  const res = await http.get('/account/balance');
+export async function getAccountBalance(): Promise<{
+  xlm: string;
+  address: string;
+}> {
+  const res = await http.get("/account/balance");
   return res.data;
+}
+
+export async function demoLogin(): Promise<UserData> {
+  const res = await http.post("/auth/demo-login", {});
+  return { ...res.data.user, token: res.data.token };
 }
