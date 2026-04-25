@@ -1,19 +1,59 @@
 import { Logo } from '../components/Logo';
+import { TradeHistoryItem } from '../services/api';
+import { buildTxUrl, truncateHash } from '../utils/stellarExplorer';
 
 interface SuccessScreenProps {
     type: 'cashout' | 'deposit';
-    amount: string;
-    commission: string;
-    received: string;
+    trade: TradeHistoryItem & { completed_at: string | null };
     agentName: string;
-    tradeId?: string;
-    lockTxHash?: string | null;
     onHome: () => void;
 }
 
-const STELLAR_EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
+const SuccessScreen = ({ type, trade, agentName, onHome }: SuccessScreenProps) => {
+    const amount = trade.amount_mxn.toFixed(2);
+    const commission = trade.platform_fee_mxn.toFixed(2);
+    const received = (trade.amount_mxn - trade.platform_fee_mxn).toFixed(2);
+    const lockTxHash = trade.lock_tx_hash;
+    const releaseTxHash = trade.release_tx_hash;
 
-const SuccessScreen = ({ type, amount, commission, received, agentName, tradeId, lockTxHash, onHome }: SuccessScreenProps) => {
+    const formatTimestamp = (isoString: string | null) => {
+        if (!isoString) return '—';
+        const date = new Date(isoString);
+        const day = date.getDate();
+        const month = date.toLocaleString('es-MX', { month: 'short' });
+        const hours = date.getHours();
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'pm' : 'am';
+        const displayHours = hours % 12 || 12;
+        return `${day} ${month} · ${displayHours}:${minutes} ${ampm}`;
+    };
+
+    const handleShare = async () => {
+        const receiptText = `Recibo de ${type === 'cashout' ? 'retiro' : 'depósito'}
+Monto: $${amount} MXN
+Recibido: $${received} MXN
+Comisión: $${commission} MXN
+Agente: ${agentName}
+Trade ID: ${trade.id}
+${lockTxHash ? `TX Lock: ${truncateHash(lockTxHash, 16)}` : ''}
+${releaseTxHash ? `TX Release: ${truncateHash(releaseTxHash, 16)}` : ''}`;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Recibo ${type === 'cashout' ? 'Retiro' : 'Depósito'}`,
+                    text: receiptText,
+                });
+                return;
+            } catch (err) {
+                if ((err as Error).name === 'AbortError') return;
+            }
+        }
+
+        await navigator.clipboard.writeText(receiptText);
+        alert('Recibo copiado al portapapeles');
+    };
+
     return (
         <main className="min-h-screen flex flex-col items-center justify-between px-6 py-12 max-w-md mx-auto bg-surface-container-lowest font-body text-on-surface antialiased">
             {/* Success Header Section */}
@@ -24,7 +64,7 @@ const SuccessScreen = ({ type, amount, commission, received, agentName, tradeId,
                     </span>
                 </div>
                 <h1 className="font-headline font-extrabold text-4xl tracking-tight mb-2">
-                    {type === 'cashout' ? '¡Listo, Juan!' : '¡Depósito exitoso!'}
+                    {type === 'cashout' ? '¡Listo!' : '¡Depósito exitoso!'}
                 </h1>
                 <p className="text-secondary font-medium text-lg opacity-70">
                     {type === 'cashout' ? 'Recibiste tu efectivo' : 'Tus MXNE ya están en tu wallet'}
@@ -45,7 +85,7 @@ const SuccessScreen = ({ type, amount, commission, received, agentName, tradeId,
                             {type === 'cashout' ? 'Efectivo recibido' : 'MXNE recibidos'}
                         </span>
                         <span className="font-bold text-primary text-lg">
-                            {type === 'cashout' ? received : `+${received}`}
+                            {type === 'cashout' ? `$${received}` : `+${received}`}
                         </span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -69,40 +109,72 @@ const SuccessScreen = ({ type, amount, commission, received, agentName, tradeId,
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-on-surface-variant font-medium text-sm">Fecha y hora</span>
-                        <span className="text-on-surface text-sm font-medium">Hoy · 14:35 pm</span>
+                        <span className="text-on-surface text-sm font-medium">{formatTimestamp(trade.completed_at ?? trade.created_at)}</span>
                     </div>
                 </div>
             </section>
 
             {/* Hash & Rating */}
             <div className="w-full space-y-8 text-center">
-                <section>
-                    {lockTxHash ? (
-                        <a
-                            href={`${STELLAR_EXPLORER}/${lockTxHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary font-bold text-sm hover:opacity-80 transition-opacity flex items-center justify-center gap-2 mx-auto"
-                        >
-                            Ver transacción on-chain
-                            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                        </a>
-                    ) : (
+                {/* Transaction hashes */}
+                <section className="space-y-4">
+                    {releaseTxHash && (
+                        <div>
+                            <a
+                                href={buildTxUrl(releaseTxHash)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary font-bold text-sm hover:opacity-80 transition-opacity flex items-center justify-center gap-2 mx-auto"
+                            >
+                                Ver transacción de liberación
+                                <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                            </a>
+                            <p className="font-mono text-[11px] text-on-surface-variant opacity-60 tracking-tight mt-1">
+                                {truncateHash(releaseTxHash, 8)}
+                            </p>
+                        </div>
+                    )}
+                    {lockTxHash && !releaseTxHash && (
+                        <div>
+                            <a
+                                href={buildTxUrl(lockTxHash)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary font-bold text-sm hover:opacity-80 transition-opacity flex items-center justify-center gap-2 mx-auto"
+                            >
+                                Ver transacción de bloqueo
+                                <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                            </a>
+                            <p className="font-mono text-[11px] text-on-surface-variant opacity-60 tracking-tight mt-1">
+                                {truncateHash(lockTxHash, 8)}
+                            </p>
+                        </div>
+                    )}
+                    {!lockTxHash && !releaseTxHash && (
                         <span className="text-primary font-bold text-sm opacity-40 flex items-center justify-center gap-2">
                             Ver transacción on-chain
                             <span className="material-symbols-outlined text-[18px]">open_in_new</span>
                         </span>
                     )}
-                    <p className="font-mono text-[11px] text-on-surface-variant opacity-60 tracking-tight mt-1">
-                        {lockTxHash ? lockTxHash.substring(0, 16) + '…' : tradeId ? `Trade: ${tradeId.substring(0, 8)}…` : ''}
-                    </p>
                 </section>
 
+                {/* Share button */}
+                <section>
+                    <button
+                        onClick={handleShare}
+                        className="text-primary font-bold text-sm hover:opacity-80 transition-opacity flex items-center justify-center gap-2 mx-auto bg-primary/10 px-4 py-2 rounded-lg"
+                    >
+                        Compartir recibo
+                        <span className="material-symbols-outlined text-[18px]">share</span>
+                    </button>
+                </section>
+
+                {/* Star rating */}
                 <section>
                     <p className="text-on-surface-variant font-medium text-sm mb-4">¿Cómo estuvo el servicio de {agentName}?</p>
                     <div className="flex justify-center gap-2">
                         {[1, 2, 3, 4, 5].map((star) => (
-                            <span 
+                            <span
                                 key={star}
                                 className="material-symbols-outlined text-outline-variant text-[32px] cursor-pointer hover:text-primary transition-colors"
                             >
@@ -115,7 +187,7 @@ const SuccessScreen = ({ type, amount, commission, received, agentName, tradeId,
 
             {/* Primary Action */}
             <div className="w-full pt-8">
-                <button 
+                <button
                     onClick={onHome}
                     className="w-full h-[54px] bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >

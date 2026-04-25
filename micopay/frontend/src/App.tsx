@@ -13,7 +13,7 @@ import Explore from './pages/Explore'
 import CETESScreen from './pages/CETESScreen'
 import BlendScreen from './pages/BlendScreen'
 import BottomNav from './components/BottomNav'
-import { registerUser, createTrade, lockTrade, revealTrade, UserData, TradeData } from './services/api'
+import { registerUser, createTrade, lockTrade, revealTrade, UserData, TradeData, getTradeById, TradeHistoryItem } from './services/api'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
@@ -26,6 +26,8 @@ function App() {
   const [lockTxHash, setLockTxHash] = useState<string | null>(null)
   const [activeAmount, setActiveAmount] = useState(500)
   const [tradeLoading, setTradeLoading] = useState(false)
+  const [completedTrade, setCompletedTrade] = useState<TradeHistoryItem | null>(null)
+  const [agentName, setAgentName] = useState<string>('')
 
   // Auto-register buyer + mock seller on startup (persisted in localStorage)
   useEffect(() => {
@@ -84,6 +86,7 @@ function App() {
       await revealTrade(trade.id, sellerUser.token)
       setActiveTrade(trade)
       setLockTxHash(lock_tx_hash)
+      setAgentName('Farmacia Guadalupe')
       console.log('✅ Trade ready:', trade.id, 'lock_tx_hash:', lock_tx_hash)
     } catch (e) {
       console.error('Trade flow failed, continuing as demo', e)
@@ -106,6 +109,7 @@ function App() {
       await revealTrade(trade.id, sellerUser.token)
       setActiveTrade(trade)
       setLockTxHash(lock_tx_hash)
+      setAgentName('Tienda Don Pepe')
       console.log('✅ Deposit trade ready:', trade.id, 'lock_tx_hash:', lock_tx_hash)
     } catch (e) {
       console.error('Deposit trade flow failed, continuing as demo', e)
@@ -188,7 +192,15 @@ function App() {
           amount={activeAmount}
           onBack={() => setCurrentPage('chat')}
           onChat={() => setCurrentPage('chat')}
-          onSuccess={() => {
+          onSuccess={async () => {
+            if (activeTrade && buyerUser?.token) {
+              try {
+                const trade = await getTradeById(activeTrade.id, buyerUser.token)
+                setCompletedTrade(trade)
+              } catch (e) {
+                console.error('Failed to fetch completed trade', e)
+              }
+            }
             setCurrentPage('success')
           }}
         />
@@ -198,29 +210,31 @@ function App() {
         <DepositQR
           onBack={() => setCurrentPage('chat_deposit')}
           onChat={() => setCurrentPage('chat_deposit')}
-          onSuccess={() => {
+          onSuccess={async () => {
+            if (activeTrade && buyerUser?.token) {
+              try {
+                const trade = await getTradeById(activeTrade.id, buyerUser.token)
+                setCompletedTrade(trade)
+              } catch (e) {
+                console.error('Failed to fetch completed trade', e)
+              }
+            }
             setCurrentPage('success')
           }}
         />
       )}
 
-      {currentPage === 'success' && (
+      {currentPage === 'success' && completedTrade && (
         <SuccessScreen
           type={flow === 'cashout' ? 'cashout' : 'deposit'}
-          amount={activeAmount.toFixed(2)}
-          commission={flow === 'cashout' ? (activeAmount * 0.01).toFixed(2) : (activeAmount * 0.008).toFixed(2)}
-          received={
-            flow === 'cashout'
-              ? `$${(activeAmount * 0.99).toFixed(2)} MXN`
-              : `${(activeAmount * 0.992).toFixed(0)} MXN`
-          }
-          agentName={flow === 'cashout' ? 'Farmacia Guadalupe' : 'Tienda Don Pepe'}
-          tradeId={activeTrade?.id}
-          lockTxHash={lockTxHash}
+          trade={completedTrade}
+          agentName={agentName || 'Agente verificado'}
           onHome={() => {
             setFlow(null)
             setActiveTrade(null)
             setLockTxHash(null)
+            setCompletedTrade(null)
+            setAgentName('')
             setCurrentPage('home')
           }}
         />

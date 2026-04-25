@@ -82,6 +82,7 @@ export interface TradeHistoryItem {
   lock_tx_hash: string | null;
   release_tx_hash: string | null;
   created_at: string;
+  completed_at: string | null;
   seller_id: string;
   buyer_id: string;
 }
@@ -89,6 +90,11 @@ export interface TradeHistoryItem {
 export async function getTradeHistory(token: string): Promise<TradeHistoryItem[]> {
   const res = await http.get('/trades/history', authHeaders(token));
   return res.data.trades;
+}
+
+export async function getTradeById(tradeId: string, token: string): Promise<TradeHistoryItem & { completed_at: string | null; created_at: string }> {
+  const res = await http.get(`/trades/${tradeId}`, authHeaders(token));
+  return res.data.trade;
 }
 
 export async function getAccountBalance(): Promise<{ xlm: string; address: string }> {
