@@ -147,6 +147,7 @@ The app becomes submission-ready for private beta and then public launch prepara
 - implement auth foundation
 - persistent user and trade storage
 - audit logging
+- document audit-log PII redaction policy (policy doc only; enforcement rules can ship later)
 - secure config cleanup
 
 ### Sprint 3

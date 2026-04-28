@@ -33,6 +33,12 @@ async function api(method: string, path: string, body?: any, token?: string) {
   return data;
 }
 
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
 function randomAddress(prefix: string): string {
   // Generate a 56-char mock Stellar address
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -89,6 +95,15 @@ async function main() {
   console.log(`   📋 Amount: $${createResult.trade.amount_mxn} MXN`);
   console.log(`   📋 Expires: ${createResult.trade.expires_at}\n`);
 
+  // --- Step 2.5: Ensure failing transition is audited ---
+  console.log('2️⃣.5️⃣  Attempting invalid lock as buyer (should fail)...');
+  try {
+    await api('POST', `/trades/${tradeId}/lock`, undefined, buyer.token);
+    throw new Error('Buyer lock unexpectedly succeeded');
+  } catch (err: any) {
+    console.log(`   ✅ Correctly rejected: ${err.message.substring(0, 80)}\n`);
+  }
+
   // --- Step 3: Seller locks on-chain ---
   console.log('3️⃣  Seller locks funds on-chain...');
   const lockResult = await api('POST', `/trades/${tradeId}/lock`, {
@@ -141,6 +156,36 @@ async function main() {
   // Verify secret was cleared (route strips secret_enc from response — confirmed cleared in DB)
   console.log(`   🔐 Secret cleared from DB: ✅ Yes (field not exposed in API response)`);
 
+  // --- Step 9.5: Verify audit trail for happy path ---
+  console.log('\n9️⃣.5️⃣  Verifying audit trail (happy path)...');
+  const happyPathAudit = await api('GET', `/trades/${tradeId}/audit`, undefined, seller.token);
+  const happyTrail = happyPathAudit.audit as Array<{ from_state: string; to_state: string; metadata: any }>;
+  assert(happyTrail.length >= 4, `Expected at least 4 audit rows, got ${happyTrail.length}`);
+  const expectedTransitions = ['pending', 'locked', 'revealing', 'completed'];
+  for (const transition of expectedTransitions) {
+    assert(
+      happyTrail.some((row) => row.to_state === transition && row.metadata?.success === true),
+      `Missing successful '${transition}' transition in audit trail`,
+    );
+  }
+  const successfulStates = happyTrail
+    .filter((row) => row.metadata?.success === true)
+    .map((row) => row.to_state);
+  const indexMap = new Map(successfulStates.map((state, idx) => [state, idx]));
+  assert(
+    (indexMap.get('pending') ?? -1) < (indexMap.get('locked') ?? -1)
+    && (indexMap.get('locked') ?? -1) < (indexMap.get('revealing') ?? -1)
+    && (indexMap.get('revealing') ?? -1) < (indexMap.get('completed') ?? -1),
+    'Happy-path successful transitions are not in expected order',
+  );
+  assert(
+    happyTrail.some((row) => row.to_state === 'locked' && row.metadata?.success === false && row.metadata?.reason),
+    'Missing failed transition audit row with reason',
+  );
+  console.log(`   ✅ Audit rows: ${happyTrail.length}`);
+  console.log(`   ✅ Contains ordered pending/lock/reveal/complete transitions`);
+  console.log(`   ✅ Failed transition logged with reason metadata`);
+
   // --- Step 10: Test cancel flow ---
   console.log('\n🔟  Testing cancel flow...');
   const trade2 = await api('POST', '/trades', {
@@ -149,8 +194,18 @@ async function main() {
   }, buyer.token);
   console.log(`   Created trade: ${trade2.trade.id}`);
 
-  const cancelResult = await api('POST', `/trades/${trade2.trade.id}/cancel`, undefined, buyer.token);
+  const cancelReason = 'Buyer no longer available to meet';
+  const cancelResult = await api('POST', `/trades/${trade2.trade.id}/cancel`, {
+    reason: cancelReason,
+  }, buyer.token);
   console.log(`   ✅ Cancel status: ${cancelResult.status}`);
+
+  const cancelAudit = await api('GET', `/trades/${trade2.trade.id}/audit`, undefined, buyer.token);
+  const cancelRows = cancelAudit.audit as Array<{ to_state: string; metadata: any }>;
+  const cancelRow = [...cancelRows].reverse().find((row) => row.to_state === 'cancelled');
+  assert(cancelRow, 'Missing cancelled transition in audit trail');
+  assert(cancelRow.metadata?.cancel_reason === cancelReason, 'Cancel reason was not logged to audit metadata');
+  console.log('   ✅ Cancel reason captured in audit metadata');
 
   // --- Step 11: List active trades (should be empty) ---
   console.log('\n1️⃣1️⃣  Listing active trades...');

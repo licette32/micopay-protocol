@@ -118,6 +118,17 @@ export async function tradeRoutes(app: FastifyInstance) {
    */
   app.post('/trades/:id/cancel', async (request) => {
     const { id } = request.params as { id: string };
-    return tradeService.cancelTrade(id, request.user.id);
+    const { reason } = (request.body as { reason?: string } | undefined) ?? {};
+    return tradeService.cancelTrade(id, request.user.id, reason);
+  });
+
+  /**
+   * GET /trades/:id/audit
+   * Ordered trade transition audit trail for support/ops.
+   */
+  app.get('/trades/:id/audit', async (request) => {
+    const { id } = request.params as { id: string };
+    const audit = await tradeService.getTradeAuditTrail(id, request.user.id);
+    return { audit };
   });
 }

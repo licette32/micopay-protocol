@@ -70,7 +70,7 @@ CREATE TABLE trades (
   status          VARCHAR(12) DEFAULT 'pending'
                   CHECK (status IN (
                     'pending', 'locked', 'revealing',
-                    'completed', 'cancelled', 'refunded'
+                    'completed', 'cancelled', 'expired', 'refunded'
                   )),
 
   -- Stellar
@@ -91,6 +91,22 @@ CREATE INDEX idx_trades_seller ON trades (seller_id, status);
 CREATE INDEX idx_trades_buyer ON trades (buyer_id, status);
 CREATE INDEX idx_trades_status ON trades (status, expires_at)
   WHERE status IN ('locked', 'revealing');
+
+-- ================================================
+-- TRADE AUDIT LOG
+-- ================================================
+CREATE TABLE audit_log (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  trade_id        UUID NOT NULL REFERENCES trades(id) ON DELETE CASCADE,
+  from_state      VARCHAR(12) NOT NULL,
+  to_state        VARCHAR(12) NOT NULL,
+  actor           TEXT NOT NULL,
+  metadata        JSONB NOT NULL DEFAULT '{}'::jsonb,
+  occurred_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_audit_log_trade_time ON audit_log (trade_id, occurred_at ASC);
+CREATE INDEX idx_audit_log_trade_to_state ON audit_log (trade_id, to_state);
 
 -- ================================================
 -- SECRET ACCESS LOG
