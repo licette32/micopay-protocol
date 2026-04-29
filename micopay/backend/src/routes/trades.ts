@@ -64,7 +64,13 @@ export async function tradeRoutes(app: FastifyInstance) {
    * All trades (active + completed) for the authenticated user, newest first.
    */
   app.get('/trades/history', async (request) => {
-    const trades = await tradeService.getTradeHistory(request.user.id);
+    const { status, page, limit } = request.query as { status?: string; page?: string; limit?: string };
+    const trades = await tradeService.getTradeHistory(
+      request.user.id,
+      status,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20
+    );
     return { trades };
   });
 

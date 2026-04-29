@@ -116,8 +116,54 @@ app.register(merchantRoutes, { prefix: '' });
 
 // --- Start server ---
 
+async function seedData() {
+  const db = (await import('./db/schema.js')).default;
+  const existing = await db.getMany('SELECT id FROM trades LIMIT 1');
+  if (existing.length > 0) return;
+
+  console.log('🌱 Seeding demo trades...');
+  const users = await db.getMany('SELECT id FROM users');
+  if (users.length < 2) {
+    await db.execute("INSERT INTO users (username, stellar_address) VALUES ('juan_test', 'GBUYER...')");
+    await db.execute("INSERT INTO users (username, stellar_address) VALUES ('farmacia_test', 'GSELLER...')");
+  }
+  const allUsers = await db.getMany('SELECT id FROM users');
+  const userId = allUsers[0].id;
+  const sellerId = allUsers[1].id;
+
+  const statuses = ['completed', 'cancelled', 'pending', 'locked', 'revealing'];
+  const now = new Date();
+
+  for (let i = 0; i < 20; i++) {
+    const status = statuses[i % statuses.length];
+    const amount = 150 + (i * 75);
+    const createdAt = new Date(now.getTime() - (i * 3600000 * 2));
+    const expiresAt = new Date(createdAt.getTime() + 7200000);
+    
+    await db.execute(
+      `INSERT INTO trades 
+       (seller_id, buyer_id, amount_mxn, amount_stroops, platform_fee_mxn, 
+        secret_hash, status, created_at, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        i % 2 === 0 ? sellerId : userId,
+        i % 2 === 0 ? userId : sellerId,
+        amount,
+        (amount * 10000000).toString(),
+        Math.ceil(amount * 0.008),
+        `hash_${i}`,
+        status,
+        createdAt,
+        expiresAt
+      ]
+    );
+  }
+  console.log('✅ Seeding complete');
+}
+
 async function start() {
   try {
+    await seedData();
     await app.listen({ port: config.port, host: '0.0.0.0' });
     app.log.info({ category: 'http', port: config.port }, '🍄 Micopay MVP Backend running');
     app.log.info({ category: 'http', mockStellar: config.mockStellar }, `Mock Stellar: ${config.mockStellar ? 'ON (no on-chain verification)' : 'OFF (real Soroban RPC)'}`);

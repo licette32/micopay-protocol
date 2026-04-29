@@ -208,16 +208,46 @@ export async function getActiveTrades(userId: string) {
   );
 }
 
-export async function getTradeHistory(userId: string) {
-  return db.getMany(
+export async function getTradeHistory(userId: string, status?: string, page = 1, limit = 20) {
+  const trades = await db.getMany(
     `SELECT id, status, amount_mxn, platform_fee_mxn, lock_tx_hash, release_tx_hash,
-            created_at, completed_at, seller_id, buyer_id
+            created_at, completed_at, seller_id, buyer_id, expires_at
      FROM trades
      WHERE (seller_id = $1 OR buyer_id = $1)
-     ORDER BY created_at DESC
-     LIMIT 20`,
+     ORDER BY created_at DESC`,
     [userId],
   );
+
+  let filtered = trades;
+  const now = new Date();
+
+  if (status && status !== 'all') {
+    if (status === 'expired') {
+      filtered = trades.filter(t =>
+        !['completed', 'cancelled'].includes(t.status) &&
+        new Date(t.expires_at) < now
+      );
+    } else {
+      filtered = trades.filter(t => t.status === status);
+    }
+  }
+
+  // Fetch usernames to provide merchant info
+  const allUsers = await db.getMany('SELECT id, username FROM users');
+  const userMap = Object.fromEntries(allUsers.map(u => [u.id, u.username]));
+
+  const mapped = filtered.map(t => {
+    const isBuyer = t.buyer_id === userId;
+    const otherPartyId = isBuyer ? t.seller_id : t.buyer_id;
+    return {
+      ...t,
+      direction: isBuyer ? 'cash-in' : 'cash-out',
+      merchant_username: userMap[otherPartyId] || 'Usuario Micopay',
+    };
+  });
+
+  const offset = (page - 1) * limit;
+  return mapped.slice(offset, offset + limit);
 }
 
 export async function lockTrade(
