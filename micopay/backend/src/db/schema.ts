@@ -191,7 +191,6 @@ function memQuery(sql: string, params: any[] = []): any[] {
     const whereStr = tableMatch[3];
 
     const updates: Record<string, any> = {};
-    // Split SET by comma, but careful with function calls — split only on ", col ="
     const setPairs = setStr.split(/,\s*(?=\w+\s*=)/);
     for (const pair of setPairs) {
       const m = pair.trim().match(/^(\w+)\s*=\s*(.+)$/i);
