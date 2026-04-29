@@ -22,6 +22,8 @@ import {
   UserData,
   TradeData,
 } from "./services/api";
+import { useTradePolling } from "./hooks/useTradePolling";
+import { ConnectionBanner } from "./components/ConnectionBanner";
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -34,6 +36,25 @@ function App() {
   const [lockTxHash, setLockTxHash] = useState<string | null>(null);
   const [activeAmount, setActiveAmount] = useState(500);
   const [tradeLoading, setTradeLoading] = useState(false);
+
+  // Poll for the active trade state
+  const { trade: polledTrade, isDegraded } = useTradePolling(
+    activeTrade?.id,
+    buyerUser?.token,
+    activeTrade,
+    5000
+  );
+
+  // Keep activeTrade in sync with polledTrade
+  useEffect(() => {
+    if (polledTrade) {
+      setActiveTrade(polledTrade);
+      // Auto-navigate if the trade completes from polling
+      if (polledTrade.status === "completed" && !["success", "home"].includes(currentPage)) {
+        setCurrentPage("success");
+      }
+    }
+  }, [polledTrade, currentPage]);
 
   // Auto-register buyer + mock seller on startup (persisted in localStorage)
   useEffect(() => {
@@ -151,6 +172,10 @@ function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F4FAFF]">
+      <div className="fixed top-0 w-full z-50">
+        <ConnectionBanner isVisible={isDegraded} />
+      </div>
+
       {currentPage === "home" && (
         <Home
           onNavigateCashout={startCashout}

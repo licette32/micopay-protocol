@@ -59,6 +59,14 @@ export async function createTrade(
   return res.data.trade;
 }
 
+export async function getTrade(
+  tradeId: string,
+  token: string,
+): Promise<TradeData> {
+  const res = await http.get(`/trades/${tradeId}`, authHeaders(token));
+  return res.data.trade;
+}
+
 export async function lockTrade(
   tradeId: string,
   sellerToken: string,
