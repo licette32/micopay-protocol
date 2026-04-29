@@ -11,6 +11,11 @@ const authRateLimit = createRateLimiter({
   max: config.authRateLimitMax,
 });
 
+const authRateLimit = createRateLimiter({
+  windowMs: config.authRateLimitWindowMs,
+  max: config.authRateLimitMax,
+});
+
 export async function userRoutes(app: FastifyInstance) {
   /**
    * POST /users/register
